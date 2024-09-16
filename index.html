@@ -36,7 +36,7 @@
   </style>
 </head>
 <body>
-  <h1>mdfk 2</h1>
+  <h1>mdfk 3</h1>
   
   <!-- 左側顯示即時情緒偵測 -->
   <video id="video" width="640" height="480" autoplay muted></video>
@@ -114,23 +114,32 @@
     const apiKey = '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'; // 正確閉合引號
 
     // 發送聊天訊息
-    async function sendMessage() {
-      const message = document.getElementById('message').value;
-      const chatLog = document.getElementById('chatLog');
-      
-      // 顯示用戶消息並附帶偵測情緒
-      chatLog.innerHTML += `<p><b>You:</b> ${message}</p>`;
-      
-      // 模擬發送到伺服器，伺服器可以接收「我現在感覺xxx」
-      const emotionMessage = `我現在感覺${lastEmotion}`;
-      
-      // 模擬伺服器回應
-      const botResponse = `Bot 回應 (情緒為: ${lastEmotion})`;
-      chatLog.innerHTML += `<p><b>Bot:</b> ${botResponse}</p>`;
-      
-      // 清空輸入框
-      document.getElementById('message').value = '';
-    }
+    // 發送聊天訊息
+async function sendMessage() {
+  const message = document.getElementById('message').value;
+  const chatLog = document.getElementById('chatLog');
+
+  // 顯示用戶消息，將情緒作為隱藏數據發送
+  chatLog.innerHTML += `<p><b>You:</b> ${message}</p>`;
+
+  // 發送到伺服器，伺服器會處理隱藏情緒
+  const emotionMessage = `我現在感覺${lastEmotion}`;
+
+  // 發送到 API，注意這裡隱藏了情緒的部分
+  const response = await fetch('https://api-endpoint', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ message: message, emotion: lastEmotion })
+  });
+
+  const data = await response.json();
+  chatLog.innerHTML += `<p><b>Bot:</b> ${data.response}</p>`;
+
+  document.getElementById('message').value = ''; // 清空輸入框
+}
+
 
     // 語音輸入功能
     function startVoiceInput() {
