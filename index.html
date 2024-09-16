@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,12 +21,24 @@
   <h1>Real-time Emotion Detection</h1>
   <video id="video" width="640" height="480" autoplay muted></video>
   <canvas id="canvas" width="640" height="480" style="display:none"></canvas>
-  <div id="output"></div>
+  <div id="output">偵測中...</div>
 
   <!-- 引入 Human Library -->
   <script src="https://cdn.jsdelivr.net/npm/@vladmandic/human"></script>
 
   <script>
+    // 情緒的中文翻譯對應表
+    const emotionTranslations = {
+      neutral: "中立",
+      happy: "快樂",
+      sad: "悲傷",
+      angry: "憤怒",
+      fearful: "恐懼",
+      disgusted: "厭惡",
+      surprised: "驚訝"
+    };
+    let lastEmotion = "偵測中..."; 
+    
     async function setupCamera() {
       const video = document.getElementById('video');
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -41,7 +53,7 @@
     async function detectEmotion(human, video, canvas, output) {
       const context = canvas.getContext('2d');
       
-      // 每秒進行多次偵測
+     // 每 100 秒進行一次偵測
       setInterval(async () => {
         // 在 canvas 上繪製 video 畫面
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -52,13 +64,21 @@
         // 提取情緒信息
         const emotions = result.face?.[0]?.emotion;
         if (emotions) {
-          // 根據概率排序，顯示最可能的情緒
+          // 根據概率排序，取得最可能的情緒
           const sortedEmotions = emotions.sort((a, b) => b.score - a.score);
-          output.textContent = `Emotion: ${sortedEmotions[0].emotion} (${(sortedEmotions[0].score * 100).toFixed(2)}%)`;
+          const detectedEmotion = sortedEmotions[0].emotion;
+          lastEmotion = `${emotionTranslations[detectedEmotion]} (${(sortedEmotions[0].score * 100).toFixed(2)}%)`;
         } else {
-          output.textContent = 'No face detected';
+          lastEmotion = '未檢測到人臉';
         }
-      }, 100); // 每 100 毫秒偵測一次
+      }, 100); // 每 0.1 秒偵測一次
+    }
+
+    function updateText(output) {
+      // 每 5 秒更新文字
+      setInterval(() => {
+        output.textContent = lastEmotion;
+      }, 5000);
     }
 
     async function main() {
@@ -68,7 +88,6 @@
       
       // 初始化 Human 庫
       const human = new Human.Human({
-        // 設定檔案，這裡你可以選擇只使用你需要的功能來提升效能
         modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human/models',
         filter: { enabled: true },
         face: {
@@ -81,11 +100,15 @@
       await human.load();
 
       // 開始偵測情緒
-      detectEmotion(human, video, canvas, output);
+      detectEmotion(human, video, canvas);
+
+      // 每 5 秒更新一次文字
+      updateText(output);
     }
 
     // 執行主函數
     main();
   </script>
 </body>
+</html>
 </html>
