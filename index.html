@@ -27,6 +27,12 @@
       overflow-y: auto;
       margin-bottom: 10px;
     }
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
   </style>
 </head>
 <body>
@@ -88,6 +94,14 @@
           const sortedEmotions = emotions.sort((a, b) => b.score - a.score);
           const detectedEmotion = sortedEmotions[0].emotion;
           lastEmotion = `${emotionTranslations[detectedEmotion]}`;
+          context.strokeStyle = 'green';
+          context.lineWidth = 3;
+          context.strokeRect(faceBox[0], faceBox[1], faceBox[2], faceBox[3]);
+        } else {
+          lastEmotion = '未檢測到人臉';
+        }
+        document.getElementById('output').textContent = lastEmotion;
+      }, 1500);
         } else {
           lastEmotion = '未檢測到人臉';
         }
