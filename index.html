@@ -36,7 +36,7 @@
   </style>
 </head>
 <body>
-  <h1>mdfk 3</h1>
+  <h1>mdfk 4</h1>
   
   <!-- 左側顯示即時情緒偵測 -->
   <video id="video" width="640" height="480" autoplay muted></video>
@@ -97,19 +97,37 @@
         const emotions = result.face?.[0]?.emotion;
         const faceBox = result.face?.[0]?.box; // 加入 faceBox 來畫框
 
-        if (emotions && faceBox) {
-          const sortedEmotions = emotions.sort((a, b) => b.score - a.score);
-          const detectedEmotion = sortedEmotions[0].emotion;
-          lastEmotion = `${emotionTranslations[detectedEmotion]}`;
-          context.strokeStyle = 'green'; // 綠臉框
-          context.lineWidth = 3;
-          context.strokeRect(faceBox[0], faceBox[1], faceBox[2], faceBox[3]); // 畫出人臉框
-        } else {
-          lastEmotion = '未檢測到人臉';
-        }
-        document.getElementById('output').textContent = lastEmotion;
-      }, 1500);
+        let lastEmotion = "偵測中...";
+let detectedEmotion = "偵測中...";
+
+// 偵測情緒
+async function detectEmotion(human, video, canvas) {
+  const context = canvas.getContext('2d');
+  setInterval(async () => {
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const result = await human.detect(canvas);
+    const emotions = result.face?.[0]?.emotion;
+    const faceBox = result.face?.[0]?.box; // 確保正確引用 box
+
+    if (emotions && faceBox) {
+      const sortedEmotions = emotions.sort((a, b) => b.score - a.score);
+      detectedEmotion = sortedEmotions[0].emotion;
+      lastEmotion = `${emotionTranslations[detectedEmotion]}`;
+      context.strokeStyle = 'green'; // 綠色框架
+      context.lineWidth = 3;
+      context.strokeRect(faceBox[0], faceBox[1], faceBox[2], faceBox[3]); // 繪製人臉框
+    } else {
+      detectedEmotion = '未檢測到人臉';
     }
+  }, 1500); // 每 1.5 秒偵測一次
+}
+
+// 每 5 秒更新顯示
+setInterval(() => {
+  document.getElementById('output').textContent = lastEmotion;
+  lastEmotion = detectedEmotion; // 更新為當前偵測到的情緒
+}, 5000); // 每 5 秒更新顯示
+
 
     const apiKey = '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'; // 正確閉合引號
 
