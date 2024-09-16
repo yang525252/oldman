@@ -36,23 +36,27 @@
   </style>
 </head>
 <body>
-  <h1>mdfk6</h1>
-  
+  <h1>mdfk 7</h1>
+
   <!-- 左側顯示即時情緒偵測 -->
   <video id="video" width="640" height="480" autoplay muted></video>
   <canvas id="canvas" width="640" height="480" style="display:none"></canvas>
   <div id="output">偵測中...</div>
 
+  <!-- 模型載入狀態 -->
+  <p id="model-status">正在載入模型...</p>
+
   <!-- 右側聊天區 -->
   <div id="chat">
     <div id="chatLog"></div>
     <input type="text" id="message" placeholder="輸入訊息">
-    <button id="sendMessageButton">送出</button> <!-- 更正了按鈕的 id -->
-    <button id="voiceInputButton">語音輸入</button> <!-- 更正了按鈕的 id -->
+    <button id="send">送出</button> <!-- 更正按鈕的 id -->
+    <button id="voice">語音輸入</button> <!-- 更正按鈕的 id -->
   </div>
 
   <!-- 引入 Human Library 和語音 API -->
   <script src="https://cdn.jsdelivr.net/npm/@vladmandic/human"></script>
+
   <script>
     // 情緒的中文翻譯對應表
     const emotionTranslations = {
@@ -64,6 +68,7 @@
       disgusted: "厭惡",
       surprised: "驚訝"
     };
+
     let lastEmotion = "偵測中...";
     let detectedEmotion = "偵測中...";
 
@@ -71,11 +76,17 @@
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognition.lang = 'zh-TW';
 
+    // 更新狀態信息的函數
+    function updateStatus(status) {
+      const statusElement = document.getElementById('model-status');
+      statusElement.textContent = status;
+    }
+
     // 設置相機和人臉偵測
     async function setupCamera() {
       try {
         const video = document.getElementById('video');
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); // 添加 audio: true 用來啟用麥克風
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         video.srcObject = stream;
         return new Promise((resolve) => {
           video.onloadedmetadata = () => {
@@ -101,7 +112,7 @@
           const sortedEmotions = emotions.sort((a, b) => b.score - a.score);
           detectedEmotion = sortedEmotions[0].emotion;
           lastEmotion = `${emotionTranslations[detectedEmotion]}`;
-          context.strokeStyle = 'green';
+          context.strokeStyle = 'green'; // 綠色框架
           context.lineWidth = 3;
           context.strokeRect(faceBox[0], faceBox[1], faceBox[2], faceBox[3]); // 繪製人臉框
         } else {
@@ -113,7 +124,7 @@
     // 每 5 秒更新顯示
     setInterval(() => {
       document.getElementById('output').textContent = lastEmotion;
-      lastEmotion = detectedEmotion; // 更新為當前偵測到的情緒
+      lastEmotion = detectedEmotion;
     }, 5000); // 每 5 秒更新顯示
 
     // 發送聊天訊息
@@ -146,29 +157,43 @@
       };
     }
 
-    // 初始化 Human 和執行主要函數
-    async function main() {
-      const video = await setupCamera(); // 啟動相機
-      const canvas = document.getElementById('canvas');
-
-      // 初始化 Human 庫
+    // 初始化 Human 庫並監控模型載入進度
+    async function loadModels() {
       const human = new Human.Human({
         modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human/models',
         face: { enabled: true, emotion: { enabled: true } },
       });
 
-      // 加載模型
+      // 監控模型載入進度
+      human.events.on('progress', (event) => {
+        updateStatus(`正在載入: ${event.detail.model} (${event.detail.loaded}/${event.detail.total})`);
+      });
+
+      // 載入模型
       await human.load();
+
+      // 模型載入完成後
+      updateStatus('所有模型已加載完成！');
+      return human;
+    }
+
+    // 主函數
+    async function main() {
+      const video = await setupCamera(); // 啟動相機
+      const canvas = document.getElementById('canvas');
+
+      // 等待模型載入完成後再進行情緒偵測
+      const human = await loadModels();
 
       // 啟動情緒偵測
       detectEmotion(human, video, canvas);
-
-      // 啟動聊天功能
-      document.getElementById('sendMessageButton').addEventListener('click', sendMessage);
-      document.getElementById('voiceInputButton').addEventListener('click', startVoiceInput);
     }
 
     main(); // 啟動主流程
+
+    // 按鈕綁定事件
+    document.getElementById('send').addEventListener('click', sendMessage);
+    document.getElementById('voice').addEventListener('click', startVoiceInput);
   </script>
 </body>
 </html>
