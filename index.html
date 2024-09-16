@@ -1,202 +1,117 @@
-<!DOCTYPE HTML>
-<html lang="zh-TW">
+<!DOCTYPE html>
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>mdfk12</title>
+  <title>实时情绪检测</title>
+  <!-- 引入 Human 库 -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/human/dist/human.js"></script>
   <style>
+    /* 隐藏视频元素，但保持其功能 */
     #video {
-      transform: scaleX(-1); /* 反转视频，像镜子一样 */
-      float: left;
-    }
-    #output {
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      color: red;
-      font-size: 24px;
-    }
-    #chat {
-      float: right;
-      width: 300px;
-      padding: 10px;
-    }
-    #chatLog {
-      border: 1px solid black;
-      height: 300px;
-      overflow-y: auto;
-      margin-bottom: 10px;
-    }
-    #canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 1;
+    position: absolute;
+  
+  width: 1px;
+  height: 1px;
     }
   </style>
 </head>
 <body>
-  <h1>情绪检测和聊天功能</h1>
+  
+  <!-- 视频元素用于显示摄像头画面 -->
+  <video id="video" width="320" height="240" autoplay muted playsinline></video>
+  <!-- 画布用于绘制检测结果 -->
+  <canvas id="canvas" width="320" height="240"></canvas>
+  <!-- 假设 iframe 的 id 是 'gradio_iframe' -->
+<iframe id="gradio_iframe" src="https://yang5252-oldman2.hf.space" style="width:100%; height:600px;"></iframe>
 
-  <!-- 左侧显示即时情绪检测 -->
-  <video id="video" width="640" height="480" autoplay muted></video>
-  <canvas id="canvas" width="640" height="480" style="display:none"></canvas>
-  <div id="output">偵測中...</div>
-
-  <!-- 模型加载状态 -->
-  <p id="model-status">正在加载模型...</p>
-
-  <!-- 右侧聊天区 -->
-  <div id="chat">
-    <div id="chatLog"></div>
-    <input type="text" id="message" placeholder="输入消息">
-    <button id="send">发送</button>
-    <button id="voice">语音输入</button>
-  </div>
-
-  <!-- 引入 Human.js 库 -->
-  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/human/dist/human.js"></script>
+<script>
+// 在情绪检测代码中，当检测到情绪时：
+function sendEmotionToGradio(emotion) {
+  const iframe = document.getElementById('gradio_iframe');
+  iframe.contentWindow.postMessage({ emotion: emotion }, 'https://yang5252-oldman2.hf.space');
+}
+</script>
 
   <script>
-    // 情绪的中文翻译对应表
-    const emotionTranslations = {
-      neutral: "中立",
-      happy: "快乐",
-      sad: "悲伤",
-      angry: "愤怒",
-      fearful: "恐惧",
-      disgusted: "厌恶",
-      surprised: "惊讶"
+    // 配置 Human 库
+    const humanConfig = {
+      modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human/models',
+      face: {
+        enabled: true,
+        detector: { enabled: true },
+        mesh: { enabled: false },
+        iris: { enabled: false },
+        emotion: { enabled: true },
+        description: { enabled: false },
+        age: { enabled: false },
+        gender: { enabled: false },
+      },
     };
 
-    let lastEmotion = "偵測中...";
-    let detectedEmotion = "偵測中...";
+    const human = new Human.Human(humanConfig);
 
-    // 语音输入初始化
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'zh-TW';
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
 
-    // 更新状态信息的函数
-    function updateStatus(status) {
-      const statusElement = document.getElementById('model-status');
-      statusElement.textContent = status;
-    }
+    let lastEmotion = '';
+    let emotionTimestamp = 0;
 
-    // 设置相机和人脸检测
+    // 设置摄像头
     async function setupCamera() {
-      try {
-        const video = document.getElementById('video');
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        video.srcObject = stream;
-        return new Promise((resolve) => {
-          video.onloadedmetadata = () => {
-            resolve(video);
-          };
-        });
-      } catch (error) {
-        console.error("无法访问相机:", error);
-        alert("无法访问相机，请检查浏览器设置并允许授权。");
-      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      return new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          resolve(video);
+        };
+      });
     }
 
-    // 检测情绪
-    async function detectEmotion(human, video, canvas) {
-      const context = canvas.getContext('2d');
+    // 渲染函数，进行实时检测和绘制
+    async function render() {
+      const result = await human.detect(video);
 
-      // 每5秒检测一次
-      setInterval(async () => {
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const result = await human.detect(canvas);
-        const emotions = result.face?.[0]?.emotion;
-        const faceBox = result.face?.[0]?.box;
+      // 绘制摄像头画面
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        if (emotions && faceBox) {
-          const sortedEmotions = emotions.sort((a, b) => b.score - a.score);
-          detectedEmotion = sortedEmotions[0].emotion;
-          lastEmotion = emotionTranslations[detectedEmotion] || "未知";
-
-          // 在画布上绘制人脸框
-          context.clearRect(0, 0, canvas.width, canvas.height);
-          context.strokeStyle = 'green'; // 绿色框架
-          context.lineWidth = 3;
-          context.strokeRect(faceBox[0], faceBox[1], faceBox[2], faceBox[3]);
-
-          // 更新显示的情绪
-          document.getElementById('output').textContent = lastEmotion;
-
-          // 将情绪发送到聊天界面
-          const chatLog = document.getElementById('chatLog');
-          chatLog.innerHTML += `<p><b>情绪检测:</b> 我现在感觉${lastEmotion}</p>`;
-          chatLog.scrollTop = chatLog.scrollHeight;
-
-        } else {
-          detectedEmotion = '未检测到人脸';
-          document.getElementById('output').textContent = detectedEmotion;
+      // 绘制检测结果
+      if (result.face && result.face.length > 0) {
+        for (let face of result.face) {
+          const { box, emotion } = face;
+          // 绘制人脸边框
+          ctx.strokeStyle = 'red';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(box[0], box[1], box[2], box[3]);
+          // 显示情绪文字
+          if (emotion && emotion.length > 0) {
+            const emotions = emotion.map((e) => `${e.emotion}: ${e.score.toFixed(2)}`).join(', ');
+            lastEmotion = emotions;
+            emotionTimestamp = Date.now();
+            ctx.fillStyle = 'red';
+            ctx.font = '16px Arial';
+            ctx.fillText(emotions, box[0], box[1] - 10);
+          }
         }
-      }, 5000); // 每5秒检测一次
+      }
+      
+      // 在画面上显示情绪文字，持续至少5秒
+      if (lastEmotion && Date.now() - emotionTimestamp < 5000) {
+        ctx.fillStyle = 'red';
+        ctx.font = '16px Arial';
+        ctx.fillText(lastEmotion, 10, 20);
+      }
+
+      requestAnimationFrame(render);
     }
 
-    // 发送聊天消息
-    async function sendMessage() {
-      const message = document.getElementById('message').value;
-      const chatLog = document.getElementById('chatLog');
-      chatLog.innerHTML += `<p><b>你:</b> ${message}</p>`;
-
-      // 模拟回复，可以替换为实际的API调用
-      const botResponse = `你说: ${message}，你现在感觉${lastEmotion}。`;
-
-      chatLog.innerHTML += `<p><b>机器人:</b> ${botResponse}</p>`;
-      document.getElementById('message').value = ''; // 清空输入框
-      chatLog.scrollTop = chatLog.scrollHeight; // 滚动到底部
-    }
-
-    // 语音输入功能
-    function startVoiceInput() {
-      recognition.start();
-      recognition.onresult = function(event) {
-        const transcript = event.results[0][0].transcript;
-        document.getElementById('message').value = transcript;
-      };
-    }
-
-    // 初始化 Human 库并监控模型加载进度
-    async function loadModels() {
-      const human = new Human.Human({
-        modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human/models',
-        cacheSensitivity: 0,
-        face: { enabled: true, emotion: { enabled: true } },
-      });
-
-      // 监控模型加载进度
-      human.events.on('load', (event) => {
-        updateStatus(`正在加载模型: ${event.model}`);
-      });
-
-      // 加载模型
+    // 初始化函数
+    (async () => {
       await human.load();
-
-      // 模型加载完成后
-      updateStatus('所有模型已加载完成！');
-      return human;
-    }
-
-    // 主函数
-    async function main() {
-      const video = await setupCamera(); // 启动相机
-      const canvas = document.getElementById('canvas');
-
-      // 等待模型加载完成后再进行情绪检测
-      const human = await loadModels();
-
-      // 启动情绪检测
-      detectEmotion(human, video, canvas);
-    }
-
-    main(); // 启动主流程
-
-    // 按钮绑定事件
-    document.getElementById('send').addEventListener('click', sendMessage);
-    document.getElementById('voice').addEventListener('click', startVoiceInput);
+      await human.warmup(); // 可选，预加载模型以提高性能
+      await setupCamera();
+      render();
+    })();
   </script>
 </body>
 </html>
