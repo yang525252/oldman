@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Emotion Detection and Chat</title>
+  <title>look how ugly are u</title>
   <style>
     #video {
       transform: scaleX(-1); /* 反轉視頻，像鏡子一樣 */
@@ -94,7 +94,7 @@
           const sortedEmotions = emotions.sort((a, b) => b.score - a.score);
           const detectedEmotion = sortedEmotions[0].emotion;
           lastEmotion = `${emotionTranslations[detectedEmotion]}`;
-          context.strokeStyle = 'green';
+          context.strokeStyle = 'green';//綠臉
           context.lineWidth = 3;
           context.strokeRect(faceBox[0], faceBox[1], faceBox[2], faceBox[3]);
         } else {
@@ -108,7 +108,7 @@
         document.getElementById('output').textContent = lastEmotion;
       }, 1500);
     }
-
+    const apiKey = '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";
     // 發送聊天訊息
     async function sendMessage() {
       const message = document.getElementById('message').value;
