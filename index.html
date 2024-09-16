@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emotion Detection</title>
+  <style>
+    #video {
+      transform: scaleX(-1); /* 反轉視頻，像鏡子一樣 */
+    }
+    #output {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: red;
+      font-size: 24px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Real-time Emotion Detection</h1>
+  <video id="video" width="640" height="480" autoplay muted></video>
+  <canvas id="canvas" width="640" height="480" style="display:none"></canvas>
+  <div id="output"></div>
+
+  <!-- 引入 Human Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/human"></script>
+
+  <script>
+    async function setupCamera() {
+      const video = document.getElementById('video');
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      return new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          resolve(video);
+        };
+      });
+    }
+
+    async function detectEmotion(human, video, canvas, output) {
+      const context = canvas.getContext('2d');
+      
+      // 每秒進行多次偵測
+      setInterval(async () => {
+        // 在 canvas 上繪製 video 畫面
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // 使用 Human 庫進行偵測
+        const result = await human.detect(canvas);
+
+        // 提取情緒信息
+        const emotions = result.face?.[0]?.emotion;
+        if (emotions) {
+          // 根據概率排序，顯示最可能的情緒
+          const sortedEmotions = emotions.sort((a, b) => b.score - a.score);
+          output.textContent = `Emotion: ${sortedEmotions[0].emotion} (${(sortedEmotions[0].score * 100).toFixed(2)}%)`;
+        } else {
+          output.textContent = 'No face detected';
+        }
+      }, 100); // 每 100 毫秒偵測一次
+    }
+
+    async function main() {
+      const video = await setupCamera();
+      const canvas = document.getElementById('canvas');
+      const output = document.getElementById('output');
+      
+      // 初始化 Human 庫
+      const human = new Human.Human({
+        // 設定檔案，這裡你可以選擇只使用你需要的功能來提升效能
+        modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human/models',
+        filter: { enabled: true },
+        face: {
+          enabled: true,
+          emotion: { enabled: true },
+        },
+      });
+      
+      // 加載模型
+      await human.load();
+
+      // 開始偵測情緒
+      detectEmotion(human, video, canvas, output);
+    }
+
+    // 執行主函數
+    main();
+  </script>
+</body>
+</html>
