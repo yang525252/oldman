@@ -2,38 +2,37 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>实时情绪检测</title>
-  <!-- 引入 Human 库 -->
+  <title>test1</title>
+  <!-- 引入 Human 庫 -->
   <script src="https://cdn.jsdelivr.net/npm/@vladmandic/human/dist/human.js"></script>
   <style>
-    /* 隐藏视频元素，但保持其功能 */
+    /* 隱藏視頻元素，但保留其功能 */
     #video {
-    position: absolute;
-  
-  width: 1px;
-  height: 1px;
+      position: absolute;
+      width: 1px;
+      height: 1px;
     }
   </style>
 </head>
 <body>
   
-  <!-- 视频元素用于显示摄像头画面 -->
+  <!-- 視頻元素，用於顯示攝像頭畫面 -->
   <video id="video" width="320" height="240" autoplay muted playsinline></video>
-  <!-- 画布用于绘制检测结果 -->
+  <!-- 畫布，用於繪製檢測結果 -->
   <canvas id="canvas" width="320" height="240"></canvas>
-  <!-- 假设 iframe 的 id 是 'gradio_iframe' -->
-<iframe id="gradio_iframe" src="https://yang5252-oldman2.hf.space" style="width:100%; height:600px;"></iframe>
-
-<script>
-// 在情绪检测代码中，当检测到情绪时：
-function sendEmotionToGradio(emotion) {
-  const iframe = document.getElementById('gradio_iframe');
-  iframe.contentWindow.postMessage({ emotion: emotion }, 'https://yang5252-oldman2.hf.space');
-}
-</script>
+  <!-- 假設 iframe 的 id 是 'gradio_iframe' -->
+  <iframe id="gradio_iframe" src="https://yang5252-oldman2.hf.space" style="width:100%; height:600px;"></iframe>
 
   <script>
-    // 配置 Human 库
+    // 在情緒檢測程式碼中，當檢測到情緒時：
+    function sendEmotionToGradio(emotion) {
+      const iframe = document.getElementById('gradio_iframe');
+      iframe.contentWindow.postMessage({ emotion: emotion }, 'https://yang5252-oldman2.hf.space');
+    }
+  </script>
+
+  <script>
+    // 配置 Human 庫
     const humanConfig = {
       modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human/models',
       face: {
@@ -57,7 +56,7 @@ function sendEmotionToGradio(emotion) {
     let lastEmotion = '';
     let emotionTimestamp = 0;
 
-    // 设置摄像头
+    // 設置攝像頭
     async function setupCamera() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       video.srcObject = stream;
@@ -68,22 +67,22 @@ function sendEmotionToGradio(emotion) {
       });
     }
 
-    // 渲染函数，进行实时检测和绘制
+    // 渲染函數，進行實時檢測和繪製
     async function render() {
       const result = await human.detect(video);
 
-      // 绘制摄像头画面
+      // 繪製攝像頭畫面
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // 绘制检测结果
+      // 繪製檢測結果
       if (result.face && result.face.length > 0) {
         for (let face of result.face) {
           const { box, emotion } = face;
-          // 绘制人脸边框
+          // 繪製人臉邊框
           ctx.strokeStyle = 'red';
           ctx.lineWidth = 2;
           ctx.strokeRect(box[0], box[1], box[2], box[3]);
-          // 显示情绪文字
+          // 顯示情緒文字
           if (emotion && emotion.length > 0) {
             const emotions = emotion.map((e) => `${e.emotion}: ${e.score.toFixed(2)}`).join(', ');
             lastEmotion = emotions;
@@ -91,11 +90,14 @@ function sendEmotionToGradio(emotion) {
             ctx.fillStyle = 'red';
             ctx.font = '16px Arial';
             ctx.fillText(emotions, box[0], box[1] - 10);
+
+            // 發送情緒數據到 Gradio 應用
+            sendEmotionToGradio(emotions);
           }
         }
       }
       
-      // 在画面上显示情绪文字，持续至少5秒
+      // 在畫面上顯示情緒文字，持續至少5秒
       if (lastEmotion && Date.now() - emotionTimestamp < 5000) {
         ctx.fillStyle = 'red';
         ctx.font = '16px Arial';
@@ -105,10 +107,10 @@ function sendEmotionToGradio(emotion) {
       requestAnimationFrame(render);
     }
 
-    // 初始化函数
+    // 初始化函數
     (async () => {
       await human.load();
-      await human.warmup(); // 可选，预加载模型以提高性能
+      await human.warmup(); // 可選，預加載模型以提高性能
       await setupCamera();
       render();
     })();
