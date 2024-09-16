@@ -36,7 +36,7 @@
   </style>
 </head>
 <body>
-  <h1>mdfk 4</h1>
+  <h1>mdfk 5</h1>
   
   <!-- 左側顯示即時情緒偵測 -->
   <video id="video" width="640" height="480" autoplay muted></video>
@@ -168,19 +168,31 @@ async function sendMessage() {
       };
     }
 
+    
     // 初始化 Human 和執行主要函數
-    async function main() {
-      const video = await setupCamera();
-      const canvas = document.getElementById('canvas');
-      const human = new Human.Human({
-        modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human/models',
-        face: { enabled: true, emotion: { enabled: true } },
-      });
-      await human.load();
-      detectEmotion(human, video, canvas);
-    }
+async function main() {
+  const video = await setupCamera(); // 啟動相機
+  const canvas = document.getElementById('canvas');
+  
+  // 初始化 Human 庫
+  const human = new Human.Human({
+    modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human/models',
+    face: { enabled: true, emotion: { enabled: true } },
+  });
+  
+  // 加載模型
+  await human.load();
 
-    main();
+  // 啟動情緒偵測
+  detectEmotion(human, video, canvas);
+
+  // 啟動聊天功能
+  document.getElementById('sendMessageButton').addEventListener('click', sendMessage);
+  document.getElementById('voiceInputButton').addEventListener('click', startVoiceInput);
+}
+
+main(); // 啟動主流程
+
   </script>
 </body>
 </html>
