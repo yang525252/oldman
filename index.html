@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>look how ugly are u</title>
+  <title>Look how ugly are u</title>
   <style>
     #video {
       transform: scaleX(-1); /* 反轉視頻，像鏡子一樣 */
@@ -73,14 +73,19 @@
 
     // 設置相機和人臉偵測
     async function setupCamera() {
-      const video = document.getElementById('video');
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      video.srcObject = stream;
-      return new Promise((resolve) => {
-        video.onloadedmetadata = () => {
-          resolve(video);
-        };
-      });
+      try {
+        const video = document.getElementById('video');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); // 添加 audio: true 用來啟用麥克風
+        video.srcObject = stream;
+        return new Promise((resolve) => {
+          video.onloadedmetadata = () => {
+            resolve(video);
+          };
+        });
+      } catch (error) {
+        console.error("Error accessing the camera and microphone:", error);
+        alert("無法訪問相機或麥克風，請檢查瀏覽器設定並允許授權。");
+      }
     }
 
     // 偵測情緒
@@ -90,25 +95,24 @@
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const result = await human.detect(canvas);
         const emotions = result.face?.[0]?.emotion;
-        if (emotions) {
+        const faceBox = result.face?.[0]?.box; // 加入 faceBox 來畫框
+
+        if (emotions && faceBox) {
           const sortedEmotions = emotions.sort((a, b) => b.score - a.score);
           const detectedEmotion = sortedEmotions[0].emotion;
           lastEmotion = `${emotionTranslations[detectedEmotion]}`;
-          context.strokeStyle = 'green';//綠臉
+          context.strokeStyle = 'green'; // 綠臉框
           context.lineWidth = 3;
-          context.strokeRect(faceBox[0], faceBox[1], faceBox[2], faceBox[3]);
-        } else {
-          lastEmotion = '未檢測到人臉';
-        }
-        document.getElementById('output').textContent = lastEmotion;
-      }, 1500);
+          context.strokeRect(faceBox[0], faceBox[1], faceBox[2], faceBox[3]); // 畫出人臉框
         } else {
           lastEmotion = '未檢測到人臉';
         }
         document.getElementById('output').textContent = lastEmotion;
       }, 1500);
     }
-    const apiKey = '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";
+
+    const apiKey = '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'; // 正確閉合引號
+
     // 發送聊天訊息
     async function sendMessage() {
       const message = document.getElementById('message').value;
