@@ -3,27 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Look how ugly are u</title>
+  <title>Emotion Detection and Chat</title>
   <style>
     #video {
       transform: scaleX(-1); /* 反轉視頻，像鏡子一樣 */
+      float: left;
     }
     #output {
       position: absolute;
-      bottom: 10px; 
+      bottom: 10px;
       left: 10px;
       color: red;
       font-size: 24px;
     }
+    #chat {
+      float: right;
+      width: 300px;
+      padding: 10px;
+    }
+    #chatLog {
+      border: 1px solid black;
+      height: 300px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
-  <h1>Real-time Emotion Detection</h1>
+  <h1>Real-time Emotion Detection and Chat</h1>
+  
+  <!-- 左側顯示即時情緒偵測 -->
   <video id="video" width="640" height="480" autoplay muted></video>
   <canvas id="canvas" width="640" height="480" style="display:none"></canvas>
   <div id="output">偵測中...</div>
 
-  <!-- 引入 Human Library -->
+  <!-- 右側聊天區 -->
+  <div id="chat">
+    <div id="chatLog"></div>
+    <input type="text" id="message" placeholder="輸入訊息">
+    <button onclick="sendMessage()">送出</button>
+    <button onclick="startVoiceInput()">語音輸入</button>
+  </div>
+
+  <!-- 引入 Human Library 和語音 API -->
   <script src="https://cdn.jsdelivr.net/npm/@vladmandic/human"></script>
 
   <script>
@@ -37,8 +59,13 @@
       disgusted: "厭惡",
       surprised: "驚訝"
     };
-    let lastEmotion = "偵測中..."; 
-    
+    let lastEmotion = "偵測中...";
+
+    // 語音輸入初始化
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'zh-TW';
+
+    // 設置相機和人臉偵測
     async function setupCamera() {
       const video = document.getElementById('video');
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -50,65 +77,65 @@
       });
     }
 
-    async function detectEmotion(human, video, canvas, output) {
+    // 偵測情緒
+    async function detectEmotion(human, video, canvas) {
       const context = canvas.getContext('2d');
-      
-     // 每 100 秒進行一次偵測
       setInterval(async () => {
-        // 在 canvas 上繪製 video 畫面
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        // 使用 Human 庫進行偵測
         const result = await human.detect(canvas);
-
-        // 提取情緒信息
         const emotions = result.face?.[0]?.emotion;
         if (emotions) {
-          // 根據概率排序，取得最可能的情緒
           const sortedEmotions = emotions.sort((a, b) => b.score - a.score);
           const detectedEmotion = sortedEmotions[0].emotion;
-          lastEmotion = `${emotionTranslations[detectedEmotion]} (${(sortedEmotions[0].score * 100).toFixed(2)}%)`;
+          lastEmotion = `${emotionTranslations[detectedEmotion]}`;
         } else {
           lastEmotion = '未檢測到人臉';
         }
-      }, 1500); // 每 0.1 秒偵測一次
+        document.getElementById('output').textContent = lastEmotion;
+      }, 1500);
     }
 
-    function updateText(output) {
-      // 每 5 秒更新文字
-      setInterval(() => {
-        output.textContent = lastEmotion;
-      }, 5000);
+    // 發送聊天訊息
+    async function sendMessage() {
+      const message = document.getElementById('message').value;
+      const chatLog = document.getElementById('chatLog');
+      
+      // 顯示用戶消息並附帶偵測情緒
+      chatLog.innerHTML += `<p><b>You:</b> ${message}</p>`;
+      
+      // 模擬發送到伺服器，伺服器可以接收「我現在感覺xxx」
+      const emotionMessage = `我現在感覺${lastEmotion}`;
+      
+      // 模擬伺服器回應
+      const botResponse = `Bot 回應 (情緒為: ${lastEmotion})`;
+      chatLog.innerHTML += `<p><b>Bot:</b> ${botResponse}</p>`;
+      
+      // 清空輸入框
+      document.getElementById('message').value = '';
     }
 
+    // 語音輸入功能
+    function startVoiceInput() {
+      recognition.start();
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('message').value = transcript;
+      };
+    }
+
+    // 初始化 Human 和執行主要函數
     async function main() {
       const video = await setupCamera();
       const canvas = document.getElementById('canvas');
-      const output = document.getElementById('output');
-      
-      // 初始化 Human 庫
       const human = new Human.Human({
         modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human/models',
-        filter: { enabled: true },
-        face: {
-          enabled: true,
-          emotion: { enabled: true },
-        },
+        face: { enabled: true, emotion: { enabled: true } },
       });
-      
-      // 加載模型
       await human.load();
-
-      // 開始偵測情緒
       detectEmotion(human, video, canvas);
-
-      // 每 5 秒更新一次文字
-      updateText(output);
     }
 
-    // 執行主函數
     main();
   </script>
 </body>
-</html>
 </html>
